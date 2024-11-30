@@ -2,22 +2,13 @@
  "cells": [
   {
    "cell_type": "code",
-   "execution_count": 46,
-   "id": "caf020fe-b43f-4f92-b4d5-b011e3d12008",
+   "execution_count": null,
+   "id": "55805b35-7ec0-4a51-bc56-da0a0fa1ff9d",
    "metadata": {},
-   "outputs": [
-    {
-     "name": "stderr",
-     "output_type": "stream",
-     "text": [
-      "No model was supplied, defaulted to distilbert/distilbert-base-cased-distilled-squad and revision 564e9b5 (https://huggingface.co/distilbert/distilbert-base-cased-distilled-squad).\n",
-      "Using a pipeline without specifying a model name and revision in production is not recommended.\n"
-     ]
-    }
-   ],
+   "outputs": [],
    "source": [
     "import pdfplumber\n",
-    "from transformers import pipeline\n",
+    "from transformers import DistilBertForQuestionAnswering, DistilBertTokenizer, pipeline\n",
     "import streamlit as st\n",
     "\n",
     "# PDFからテキストを抽出する関数\n",
@@ -28,18 +19,23 @@
     "            text += page.extract_text()\n",
     "    return text\n",
     "\n",
-    "# 質問応答のパイプラインの作成\n",
-    "qa_pipeline = pipeline(\"question-answering\")\n",
+    "# DistilBERTを使った質問応答モデルの明示的なロード\n",
+    "model_name = \"distilbert-base-cased-distilled-squad\"  # 使用するモデルを指定\n",
+    "tokenizer = DistilBertTokenizer.from_pretrained(model_name)  # トークナイザーを読み込む\n",
+    "model = DistilBertForQuestionAnswering.from_pretrained(model_name)  # モデルを読み込む\n",
+    "\n",
+    "# 質問応答のパイプラインを作成\n",
+    "qa_pipeline = pipeline(\"question-answering\", model=model, tokenizer=tokenizer)\n",
+    "\n",
+    "# Streamlitアプリケーションの設定\n",
+    "st.title(\"PDF質問応答システム\")\n",
+    "st.write(\"このシステムは「Published Version」というPDF文書に基づいて質問に回答します。\")\n",
     "\n",
     "# PDFファイルのパスを指定（ローカルに保存されているPDFを使用）\n",
     "pdf_path = \"Published Version.pdf\"  # PDFファイルのパスを指定\n",
     "\n",
     "# PDFからテキストを抽出\n",
     "pdf_text = extract_text_from_pdf(pdf_path)\n",
-    "\n",
-    "# Streamlitアプリケーションの設定\n",
-    "st.title(\"PDF質問応答システム\")\n",
-    "st.write(\"このシステムは「Published Version」というPDF文書に基づいて質問に回答します。\")\n",
     "\n",
     "# ユーザーからの質問を受け取る\n",
     "question = st.text_input(\"質問を入力してください:\")\n",
@@ -52,14 +48,6 @@
     "    # 回答を表示\n",
     "    st.write(f\"回答: {answer}\")"
    ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "0812da1a-94a5-473a-a099-6e1d7dde9950",
-   "metadata": {},
-   "outputs": [],
-   "source": []
   }
  ],
  "metadata": {
