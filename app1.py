@@ -1,58 +1,44 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# Open a new Jupyter Notebook and import the required libraries to create an API using Flask, as well as the libraries to load the saved model:
-
-# In[7]:
-
-
-import flask
-from flask import request
+import streamlit as st
 import torch
-import final_model
+import pickle
+from sentence_transformers import SentenceTransformer, util
 
+# Streamlitアプリのタイトル
+st.title("PDF-based Chatbot")
+st.write("Ask questions about a specific document.")
 
-# In[8]:
+# モデルのロード
+@st.cache_resource
+def load_model():
+    return SentenceTransformer('all-MiniLM-L6-v2')
 
+# PDF知識ベースのロード
+@st.cache_resource
+def load_knowledge_base():
+    with open("knowledge_base.pkl", "rb") as f:
+        sentences, embeddings = pickle.load(f)
+    return sentences, embeddings
 
-# Initialize the Flask app:
-app = flask.Flask(__name__)
-app.config["DEBUG"] = True
+# 質問に基づいて回答を取得
+def get_answer(question, model, sentences, embeddings):
+    question_embedding = model.encode(question)
+    scores = util.pytorch_cos_sim(question_embedding, embeddings)
+    best_match_idx = scores.argmax()
+    return sentences[best_match_idx]
 
+# モデルと知識ベースをロード
+model = load_model()
+sentences, embeddings = load_knowledge_base()
 
-# In[10]:
+# ユーザー入力
+question = st.text_input("Enter your question:")
 
-
-# Define a function that loads the saved model and then instantiate the model:
-
-def load_model_checkpoint(path):
-    checkpoint = torch.load(path)
-    model = final_model.Classifier(checkpoint["input_size"])
-    model.load_state_dict(checkpoint["state_dict"])
-    return model
-
-model = load_model_checkpoint("checkpoint.pth")
-
-
-# In[11]:
-
-
-# Define the route of the API to /prediction and set the method to POST.
-# Then, define the function that will receive the POST data and feed it to the model to perform a prediction:
-@app.route('/prediction', methods=['POST'])
-def prediction():
-    body = request.get_json()
-    example = torch.tensor(body['data']).float()
-    pred = model(example)
-    pred = torch.exp(pred)
-    _, top_class_test = pred.topk(1, dim=1)
-    top_class_test = top_class_test.numpy()
-    return {"status":"ok", "result":int(top_class_test[0][0])}
-
-
-# In[ ]:
-
-
-# Run the Flask app:
-#app.run(debug=True, use_reloader=False)
-
+# 回答生成
+if question:
+    try:
+        answer = get_answer(question, model, sentences, embeddings)
+        st.write(f"**Answer:** {answer}")
+    except Exception as e:
+        st.error("An error occurred while processing your question.")
+        st.error(str(e))
+修正箇所の詳細
